@@ -1,5 +1,5 @@
 import * as pdfjs from 'pdfjs-dist';
-import { memo, useEffect, useRef } from 'react';
+import React, { memo, useEffect, useRef, useState } from 'react';
 import {
   AreaHighlight,
   Highlight,
@@ -50,32 +50,31 @@ const PdfPreview = ({
   // const url = useGetDocumentUrl();
 
   const ref = useRef<(highlight: IHighlight) => void>(() => {});
+  const [loaded, setLoaded] = useState(false);
   const error = useCatchDocumentError(url);
 
   const resetHash = () => {};
 
   useEffect(() => {
-    let timer = null;
-    if (state?.length && state?.length > 0) {
-      timer = setTimeout(() => {
-        ref?.current(state[0]);
-      }, 100);
+    if (state?.length && state?.length > 0 && loaded) {
+      ref?.current(state[0]);
     }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [state]);
+  }, [state, loaded]);
 
   const httpHeaders = {
     [Authorization]: getAuthorization(),
   };
 
+  const isUrlValid =
+    !!url && !url.endsWith('undefined') && !url.endsWith('/get/');
+
   return (
     <div
       className={`${styles.documentContainer} rounded-[10px] overflow-hidden	${className}`}
     >
-      <Loader
-        url={url}
+      {isUrlValid && (
+        <Loader
+          url={url}
         httpHeaders={httpHeaders}
         beforeLoad={
           <div className="absolute inset-0 flex items-center justify-center">
@@ -99,6 +98,7 @@ const PdfPreview = ({
               onScrollChange={resetHash}
               scrollRef={(scrollTo) => {
                 ref.current = scrollTo;
+                setLoaded(true);
               }}
               onSelectionFinished={() => null}
               highlightTransform={(
@@ -110,8 +110,8 @@ const PdfPreview = ({
                 screenshot,
                 isScrolledTo,
               ) => {
-                const isTextHighlight = !Boolean(
-                  highlight.content && highlight.content.image,
+                const isTextHighlight = !(
+                  highlight.content && highlight.content.image
                 );
 
                 const component = isTextHighlight ? (
@@ -141,13 +141,13 @@ const PdfPreview = ({
                   </Popup>
                 );
               }}
-              highlights={state || []}
+              highlights={loaded ? (state || []) : []}
             />
           );
         }}
-      </Loader>
-    </div>
-  );
-};
-
+              </Loader>
+            )}
+          </div>
+        );
+      };
 export default memo(PdfPreview);
